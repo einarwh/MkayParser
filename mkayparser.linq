@@ -62,10 +62,10 @@ let marith =
 
 let mcomp = 
   (stringReturn "==" MEq) <|>
-  (stringReturn "==" MGt) <|>
-  (stringReturn "==" MLt) <|>
-  (stringReturn "==" MGteq) <|>
-  (stringReturn "==" MLteq)
+  (stringReturn ">" MGt) <|>
+  (stringReturn "<" MLt) <|>
+  (stringReturn ">=" MGteq) <|>
+  (stringReturn "<=" MLteq)
 
 let mint = pint32 |>> MInt
 
@@ -119,7 +119,10 @@ let rec meval (exp : MItem) =
       | MAnd :: tl -> tl |> List.forall meval
       | MOr :: tl -> tl |> List.exists meval
 	  | MEq :: MInt n1 :: MInt n2 :: [] -> n1 = n2
-	  | MLt :: MInt n1 :: MInt n2 :: [] -> n1 < n2
+	  | MLt :: MInt n1 :: MInt n2 :: [] -> 
+	    Console.WriteLine(n1)
+		Console.WriteLine(n2)
+		n1 < n2
 	  | MGt :: MInt n1 :: MInt n2 :: [] -> n1 > n2
 	  | MLteq :: MInt n1 :: MInt n2 :: [] -> n1 <= n2
 	  | MGteq :: MInt n1 :: MInt n2 :: [] -> n1 >= n2
@@ -138,10 +141,11 @@ let res1 = doeval "(&& false true)"
 let res2 = doeval "(&& true true)"
 let res3 = doeval "(== 5 5)"
 let res4 = doeval "(== 5 6)"
+let res5 = doeval "(< 5 6)"
    
 Console.WriteLine res0
 Console.WriteLine res1
 Console.WriteLine res2
 Console.WriteLine res3
 Console.WriteLine res4
-
+Console.WriteLine res5
