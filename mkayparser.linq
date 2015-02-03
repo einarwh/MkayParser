@@ -4,8 +4,6 @@
   <Namespace>FParsec</Namespace>
 </Query>
 
-// Learn more about F# at http://fsharp.net
-// See the 'F# Tutorial' project for more help.
 open System
 open FParsec
 
@@ -111,41 +109,68 @@ test marith "+"
 test marith "0"
 test marith "/"
 
-let rec meval (exp : MItem) =
+type RVal = RString of string | RInt of int | RBool of bool | RNaught
+
+let rec boolVals (vs : RVal list) =
+  match vs with
+   | [] -> []
+   | h::t -> match h with 
+              | RBool bv -> bv :: boolVals t
+			  | _ -> raise (System.Exception("Type error: Expected RBool"))
+
+let rec meval (exp : MItem) : RVal =
   match exp with
-   | MBool b -> b
+   | MBool b -> RBool b
+   | MInt n -> RInt n
+   | MString s -> RString s
    | MList lst -> 
      match lst with
-      | MAnd :: tl -> tl |> List.forall meval
-      | MOr :: tl -> tl |> List.exists meval
-	  | MEq :: MInt n1 :: MInt n2 :: [] -> n1 = n2
-	  | MLt :: MInt n1 :: MInt n2 :: [] -> 
-	    Console.WriteLine(n1)
-		Console.WriteLine(n2)
-		n1 < n2
-	  | MGt :: MInt n1 :: MInt n2 :: [] -> n1 > n2
-	  | MLteq :: MInt n1 :: MInt n2 :: [] -> n1 <= n2
-	  | MGteq :: MInt n1 :: MInt n2 :: [] -> n1 >= n2
-      | _ -> false
-   | _ -> false
+      | MAnd :: tl -> 
+		let res = List.map meval tl |> boolVals |> List.forall (fun x -> x)
+		RBool res
+      | MOr :: tl -> 
+	    let res = List.map meval tl |> boolVals |> List.exists (fun x -> x)
+		RBool res
+	  | MEq :: x :: y :: [] -> RBool (meval x = meval y)
+	  | MLt :: x :: y :: [] -> RBool (meval x < meval y)
+	  | MGt :: x :: y :: [] -> RBool (meval x > meval y)
+	  | MLteq :: x :: y :: [] -> RBool (meval x <= meval y)
+	  | MGteq :: x :: y :: [] -> RBool (meval x >= meval y)
+	  | MPlus :: x :: y :: [] -> 
+	    let x1 = meval x
+		let y1 = meval y
+		match (x1, y1) with 
+		 | (RInt nx, RInt ny) -> RInt (nx + ny)
+		 | (RString sx, RString sy) -> RString (sx + sy)
+		 | _ -> raise (System.Exception("Type error: Not addable."))
+	  | _ -> RNaught
+   | _ -> RNaught
 
 let ast = run mlist "(&& true true)"
 
 let doeval s = 
   match run mlist s with
    | Success(result, _, _) -> meval result
-   | Failure(errorMsg, _, _) -> false
+   | Failure(errorMsg, _, _) -> RBool false
+
+let output s = 
+  Console.Write (s + " => ")
+  match doeval s with 
+   | RBool b -> 
+     Console.WriteLine b
+   | RInt n -> 
+     Console.WriteLine n
+   | RString s ->
+     Console.WriteLine s
+   | _ -> Console.WriteLine "Huh"
    
-let res0 = doeval "(|| false true)"
-let res1 = doeval "(&& false true)"
-let res2 = doeval "(&& true true)"
-let res3 = doeval "(== 5 5)"
-let res4 = doeval "(== 5 6)"
-let res5 = doeval "(< 5 6)"
-   
-Console.WriteLine res0
-Console.WriteLine res1
-Console.WriteLine res2
-Console.WriteLine res3
-Console.WriteLine res4
-Console.WriteLine res5
+output "(|| false true)"
+output "(&& false true)"
+output "(&& true true)"
+output "(== 5 5)"
+output "(== 5 6)"
+output "(< 5 6)"
+output "(|| (== 5 6) (< 5 6))"
+output "(+ 5 6)"
+output "(== \"foo\" \"foo\")"
+output "(+ \"foo\" \"bar\")"
